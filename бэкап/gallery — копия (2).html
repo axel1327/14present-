@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Галерея</title>
+<style>
+html, body {
+    margin: 0;
+    padding: 0;
+    font-family: 'Arial', sans-serif;
+    height: 100%;
+    width: 100%;
+    background-color: #ffe6e6;
+}
+
+/* Общий эффект: плавное затухание body при навигации (как в otritka.html) */
+body {
+    opacity: 1;
+    transition: opacity 0.6s ease;
+}
+body.fade-out {
+    opacity: 0;
+    pointer-events: none;
+}
+
+/* Фоновая прокрутка из тех же фотографий */
+#bgScroller {
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    overflow: hidden;
+    pointer-events: auto;
+    --scroll-duration: 180s; /* возвращено к предыдущей длительности прокрутки */
+}
+.bgStrip {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    transform: translateY(0);
+    /* бесшовная вертикальная прокрутка: дублируем содержимое и анимируем на -50% */
+    animation: scrollDown var(--scroll-duration, 180s) linear infinite;
+}
+.bgStrip img {
+    width: 180px;
+    height: 120px;
+    position: absolute;
+    object-fit: cover;
+    border-radius: 12px;
+    filter: saturate(0.6) brightness(1.1) blur(1px);
+    opacity: 0.18;
+    transition: opacity 0.3s ease, transform 0.3s ease;
+    cursor: pointer;
+}
+.bgStrip img:hover { opacity: 0.45; transform: scale(1.05); filter: saturate(0.9) blur(0); }
+
+@keyframes scrollDown {
+    0% { transform: translateY(0%); }
+    100% { transform: translateY(-50%); }
+}
+
+/* Мини-галерея удалена — используется фоновая прокрутка */
+
+/* Лайтбокс (скопировано из main.html) */
+#lightbox {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.85);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+    flex-direction: column;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.35s ease;
+}
+
+#lightbox.visible {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+#lightbox img {
+    max-width: 80%;
+    max-height: 80%;
+    border-radius: 10px;
+    transform: scale(0.96);
+    opacity: 0;
+    transition: transform 0.35s ease, opacity 0.35s ease;
+}
+
+#lightbox.visible img { transform: scale(1); opacity: 1; }
+
+#lightbox .controls {
+    margin-top: 16px;
+}
+
+#lightbox button {
+    margin: 0 6px;
+    padding: 10px 16px;
+    background-color: #ff3366;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+}
+
+#lightbox button:hover { background-color: #e60039; }
+
+/* Контентный блок для анимаций (чтобы fixed сайдбар не прыгал) */
+.content {
+    opacity: 0;
+    transform: translateX(50px);
+    transition: opacity 0.6s ease, transform 0.6s ease;
+    margin-left: 150px; /* leave space for sidebar */
+    width: calc(100% - 150px);
+    box-sizing: border-box;
+    padding: 10px 30px;
+    position: relative;
+    z-index: 20; /* поверх фоновой прокрутки */
+}
+.content.content-visible {
+    opacity: 1;
+    transform: none;
+}
+.content.content-fade-out {
+    opacity: 0 !important;
+    transform: translateX(50px);
+}
+
+/* Боковое меню (те же стили, что в main/otritka) */
+#sidebar {
+    position: fixed;
+    left: 0;
+    top: 0;
+    width: 150px;
+    height: 100%;
+    background: rgba(255, 255, 255, 0.8);
+    box-shadow: 2px 0 10px rgba(0,0,0,0.1);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding-top: 50px;
+    gap: 20px;
+    z-index: 10;
+}
+
+/* sidebar initial state + smooth appear */
+#sidebar {
+    transform: translateX(-20px);
+    opacity: 0;
+    transition: transform 360ms ease, opacity 360ms ease;
+}
+#sidebar.visible {
+    transform: none;
+    opacity: 1;
+}
+
+#sidebar button {
+    width: 120px;
+    padding: 10px;
+    font-size: 1em;
+    border-radius: 10px;
+    border: none;
+    background-color: #ff3366;
+    color: white;
+    cursor: pointer;
+    transition: transform 0.2s, background-color 0.2s;
+}
+
+#sidebar button:hover {
+    background-color: #e60039;
+    transform: scale(1.05);
+}
+
+</style>
+</head>
+<body>
+
+<!-- Фоновая прокрутка изображений (динамически наполняется скриптом) -->
+<div id="bgScroller" aria-hidden="true"></div>
+
+<!-- Меню (как в main/otritka) -->
+<div id="sidebar">
+    <button id="backBtn">Назад</button>
+</div>
+
+<div class="content">
+    <h1 style="text-align:center;color:#e60039;margin:20px 0;">Галерея — Наши моменты</h1>
+</div>
+
+<!-- Лайтбокс -->
+<div id="lightbox">
+    <img src="" id="lightboxImg">
+    <div class="controls">
+        <button id="prevBtn">Назад</button>
+        <button id="nextBtn">Вперед</button>
+        <button id="closeLightbox">Закрыть</button>
+    </div>
+</div>
+
+<script>
+// Массив фото (взято из main.html)
+const momentsPhotos = [
+  "photos/IMG_1552.png",
+  "photos/IMG_2035.png",
+  "photos/IMG_7921.png",
+  "photos/IMG_7929.png",
+  "photos/IMG_8987.png",
+  "photos/IMG_8988.png",
+  "photos/IMG_9260.png",
+  "photos/photo_5211062740997312818_y.jpg",
+  "photos/photo_5211062740997312819_y.jpg",
+  "photos/photo_5211062740997312820_y.jpg",
+  "photos/photo_5211062740997312821_y.jpg",
+  "photos/photo_5211062740997312822_y.jpg",
+  "photos/photo_5211062740997312823_y.jpg",
+  "photos/photo_5211062740997312824_y.jpg",
+  "photos/photo_5211062740997312825_y.jpg",
+  "photos/photo_5211062740997312826_y.jpg",
+  "photos/photo_5211062740997312827_y.jpg",
+  "photos/photo_5211062740997312828_y.jpg",
+  "photos/photo_5211062740997312829_y.jpg",
+  "photos/photo_5211062740997312830_y.jpg",
+  "photos/photo_5211062740997312831_y.jpg",
+  "photos/photo_5211062740997312833_y.jpg",
+  "photos/photo_5211062740997312835_y.jpg",
+  "photos/photo_5211062740997312838_y.jpg",
+  "photos/photo_5211062740997312839_y.jpg",
+  "photos/photo_5211062740997312927_y.jpg",
+  "photos/photo_5211062740997312931_y.jpg",
+  "photos/photo_5211062740997312934_y.jpg",
+  "photos/photo_5211062740997312935_y.jpg",
+  "photos/photo_5211062740997312936_y.jpg",
+  "photos/photo_5211062740997312937_y.jpg",
+  "photos/photo_5211062740997312941_y.jpg",
+  "photos/photo_5211062740997312942_y.jpg",
+  "photos/photo_5211062740997312945_y.jpg",
+  "photos/photo_5211062740997312946_y.jpg",
+  "photos/photo_5211062740997312948_y.jpg",
+  "photos/photo_5211062740997312949_y.jpg",
+  "photos/photo_5211062740997312950_y.jpg",
+  "photos/photo_5211062740997312952_y.jpg",
+  "photos/photo_5211062740997312954_y.jpg",
+  "photos/photo_5211062740997312957_y.jpg",
+  "photos/photo_5211062740997312958_y.jpg",
+  "photos/photo_5211062740997312959_y.jpg",
+  "photos/photo_5211062740997312960_y.jpg",
+  "photos/photo_5211062740997312963_y.jpg",
+  "photos/photo_5211062740997312964_y.jpg",
+  "photos/photo_5211062740997312966_y.jpg",
+  "photos/photo_5211062740997312967_y.jpg",
+  "photos/photo_5211062740997312969_y.jpg",
+  "photos/photo_5211062740997312972_y.jpg",
+  "photos/photo_5211062740997312973_y.jpg",
+  "photos/photo_5211062740997312975_y.jpg",
+  "photos/photo_5211062740997312976_y.jpg",
+  "photos/photo_5211062740997312977_y.jpg"
+];
+
+// simple gallery removed; no momentsContainer
+
+// Создаёт фон-скроллер и наполняет его копиями фото для бесшовной прокрутки
+function createBackgroundScroller(){
+    const scroller = document.getElementById('bgScroller');
+    if(!scroller) return;
+    scroller.innerHTML = '';
+    // Подсчитаем, сколько повторов нужно, чтобы заполнить экран
+    const imgW = 180, imgH = 120;
+    const gap = 10;
+    const cols = Math.max(1, Math.floor(window.innerWidth / (imgW + gap)));
+    // Заполним минимумом строк, чтобы покрыть высоту экрана
+    const rows = Math.max(1, Math.ceil(window.innerHeight / (imgH + gap)));
+    const itemsPerSeq = cols * rows;
+    // Формируем один последовательный набор изображений длиной itemsPerSeq
+    const sequence = [];
+    for(let i=0;i<itemsPerSeq;i++) sequence.push(momentsPhotos[i % momentsPhotos.length]);
+
+    // Создаём одну полосу и располагаем изображения по сетке (abs positions)
+    const strip = document.createElement('div');
+    strip.className = 'bgStrip';
+    strip.style.position = 'absolute';
+    strip.style.left = '0';
+    // высота одной последовательности в пикселях
+    const seqHeight = rows * (imgH + gap);
+    strip.style.height = (seqHeight * 2) + 'px'; // два повторения подряд
+
+    sequence.forEach((src, i)=>{
+        const col = i % cols;
+        const row = Math.floor(i / cols);
+        const img = document.createElement('img');
+        img.src = src;
+        img.dataset.index = i % momentsPhotos.length;
+        img.style.left = (col * (imgW + gap) + Math.floor((window.innerWidth - (cols*(imgW+gap)))/2)) + 'px';
+        img.style.top = (row * (imgH + gap)) + 'px';
+        strip.appendChild(img);
+    });
+
+    // дублируем последовательность ниже первой (чтобы движение -50% было бесшовным)
+    sequence.forEach((src, i)=>{
+        const col = i % cols;
+        const row = Math.floor(i / cols);
+        const img = document.createElement('img');
+        img.src = src;
+        img.dataset.index = i % momentsPhotos.length;
+        img.style.left = (col * (imgW + gap) + Math.floor((window.innerWidth - (cols*(imgW+gap)))/2)) + 'px';
+        img.style.top = (row * (imgH + gap) + seqHeight) + 'px';
+        strip.appendChild(img);
+    });
+
+    scroller.appendChild(strip);
+    // Клик по фоновой картинке открывает лайтбокс (назначаем напрямую, чтобы при пересоздании не дублировать обработчики)
+    scroller.onclick = (e) => {
+        if(e.target && e.target.tagName === 'IMG'){
+            currentIndex = parseInt(e.target.dataset.index,10);
+            showLightbox();
+        }
+    };
+}
+
+// Пересоздаём скроллер при изменении размера окна (с дебаунсом)
+let __bgResizeTimer = null;
+window.addEventListener('resize', ()=>{
+    clearTimeout(__bgResizeTimer);
+    __bgResizeTimer = setTimeout(createBackgroundScroller, 180);
+});
+
+// loadMomentsPhotos removed — thumbnails no longer displayed
+
+// Лайтбокс
+const lightbox = document.getElementById('lightbox');
+const lightboxImg = document.getElementById('lightboxImg');
+let currentIndex = 0;
+
+// thumbnails listener removed; background scroller handles clicks
+
+function showLightbox(){
+    lightboxImg.src = momentsPhotos[currentIndex];
+    // Открываем с плавной анимацией через класс
+    lightbox.classList.add('visible');
+    // форсируем перерисовку для плавного появления картинки
+    requestAnimationFrame(()=>{ lightboxImg.style.willChange = 'transform,opacity'; });
+}
+
+document.getElementById('prevBtn').addEventListener('click',()=>{
+    currentIndex = (currentIndex-1+momentsPhotos.length)%momentsPhotos.length;
+    lightboxImg.src = momentsPhotos[currentIndex];
+});
+
+document.getElementById('nextBtn').addEventListener('click',()=>{
+    currentIndex = (currentIndex+1)%momentsPhotos.length;
+    lightboxImg.src = momentsPhotos[currentIndex];
+});
+
+document.getElementById('closeLightbox').addEventListener('click',()=>{
+    lightbox.classList.remove('visible');
+});
+
+// Клавиши и свайпы для навигации
+document.addEventListener('keydown', (e)=>{
+    if(!lightbox.classList.contains('visible')) return;
+    if(e.key === 'Escape') lightbox.classList.remove('visible');
+    if(e.key === 'ArrowLeft') document.getElementById('prevBtn').click();
+    if(e.key === 'ArrowRight') document.getElementById('nextBtn').click();
+});
+
+// Простой свайп: pointer-based
+(() => {
+    let startX = null;
+    const img = lightboxImg;
+    img.addEventListener('pointerdown', (e) => { startX = e.clientX; img.setPointerCapture(e.pointerId); });
+    img.addEventListener('pointerup', (e) => {
+        if (startX === null) return;
+        const dx = e.clientX - startX;
+        if (dx > 40) document.getElementById('prevBtn').click();
+        else if (dx < -40) document.getElementById('nextBtn').click();
+        startX = null;
+    });
+})();
+
+// Кнопка "Назад" в сайдбаре — использовать тот же эффект затухания body, что в otritka.html
+function navWithBodyFade(url) {
+    const body = document.body;
+    if (!body) { window.location.href = url; return; }
+    const onEnd = (e) => {
+        if (e.target === body && e.propertyName === 'opacity') {
+            body.removeEventListener('transitionend', onEnd);
+            window.location.href = url;
+        }
+    };
+    body.addEventListener('transitionend', onEnd);
+    body.classList.add('fade-out');
+    setTimeout(()=>{ body.removeEventListener('transitionend', onEnd); window.location.href = url; }, 900);
+}
+
+const backBtn = document.getElementById('backBtn');
+if (backBtn) backBtn.addEventListener('click', () => navWithBodyFade('main.html'));
+
+// Плавное появление страницы (анимируем #content)
+document.addEventListener('DOMContentLoaded', ()=>{
+    const sb = document.getElementById('sidebar');
+    requestAnimationFrame(()=>{
+        document.querySelector('.content').classList.add('content-visible');
+        if (sb) sb.classList.add('visible');
+    });
+    createBackgroundScroller();
+});
+
+</script>
+</body>
+</html>

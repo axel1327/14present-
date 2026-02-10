@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Валентинка</title>
+<style>
+html, body {
+    margin: 0;
+    padding: 0;
+    font-family: 'Arial', sans-serif;
+    height: 100%;
+    width: 100%;
+    background-color: #ffe6e6;
+    overflow: hidden;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex-direction: column;
+    text-align: center;
+}
+
+h1 {
+    font-size: 2em;
+    color: #e60039;
+    margin-bottom: 20px;
+}
+
+button {
+    padding: 10px 20px;
+    font-size: 1em;
+    border-radius: 10px;
+    border: none;
+    background-color: #ff3366;
+    color: white;
+    cursor: pointer;
+    margin: 10px;
+}
+
+button:hover {
+    background-color: #e60039;
+}
+
+#photoContainer {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+}
+
+#photoContainer img {
+    width: 150px;
+    height: 150px;
+    object-fit: cover;
+    border-radius: 10px;
+    box-shadow: 0 0 20px rgba(255,0,80,0.5);
+    opacity: 0;
+    transition: opacity 1s ease-in-out;
+}
+
+#message {
+    font-size: 1.5em;
+    color: #e60039;
+    margin-top: 20px;
+    white-space: pre-wrap;
+}
+
+.heart {
+    position: absolute;
+    font-size: 24px;
+    pointer-events: none;
+    user-select: none;
+    animation: floatDown linear forwards;
+}
+
+@keyframes floatDown {
+    0% { transform: translateY(-50px); opacity: 1; }
+    100% { transform: translateY(800px); opacity: 0; }
+}
+/* Боковое меню (как в main.html) */
+#sidebar {
+    position: fixed;
+    left: 0;
+    top: 0;
+    width: 150px;
+    height: 100%;
+    background: rgba(255, 255, 255, 0.8);
+    box-shadow: 2px 0 10px rgba(0,0,0,0.1);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding-top: 50px;
+    gap: 20px;
+    z-index: 10;
+}
+
+#sidebar button {
+    width: 120px;
+    padding: 10px;
+    font-size: 1em;
+    border-radius: 10px;
+    border: none;
+    background-color: #ff3366;
+    color: white;
+    cursor: pointer;
+    transition: transform 0.2s, background-color 0.2s;
+}
+
+/* sidebar initial state + smooth appear */
+#sidebar {
+    transform: translateX(-20px);
+    opacity: 0;
+    transition: transform 360ms ease, opacity 360ms ease;
+}
+#sidebar.visible {
+    transform: none;
+    opacity: 1;
+}
+
+#sidebar button:hover {
+    background-color: #e60039;
+    transform: scale(1.05);
+}
+/* Плавный переход при уходе со страницы */
+body {
+    opacity: 0; /* начальное состояние — невидимо, затем добавим класс visible */
+    transition: opacity 0.6s ease, transform 0.6s ease;
+}
+.visible {
+    opacity: 1;
+    transform: none;
+}
+.fade-out {
+    opacity: 0 !important;
+    transform: translateX(50px);
+}
+</style>
+</head>
+<body>
+
+<!-- Меню (скопировано из main.html) -->
+<div id="sidebar">
+    <button id="backBtn">Назад</button>
+</div>
+
+<h1 id="valentineText">Ты будешь моей Валентинкой? 💖</h1>
+<div id="valentineButtons" style="display:flex; gap:10px;">
+    <button id="yesBtn">Да</button>
+    <button id="noBtn">Нет</button>
+</div>
+
+<div id="photoContainer"></div>
+<div id="message"></div>
+
+<audio id="music" autoplay loop>
+    <source src="https://cdn.pixabay.com/download/audio/2022/03/15/audio_6a51c97395.mp3?filename=romantic-piano-111926.mp3" type="audio/mpeg">
+    Ваш браузер не поддерживает аудио.
+</audio>
+
+<script>
+// Списки фото
+const photos = ["photo1.jpg", "photo2.jpg", "photo3.jpg"];
+const finalText = "Спасибо, что ты в моей жизни, лисенок!\nС праздником, я тебя люблю 💖";
+
+const photoContainer = document.getElementById("photoContainer");
+const message = document.getElementById("message");
+const valentineText = document.getElementById("valentineText");
+const buttonContainer = document.getElementById("valentineButtons");
+
+const yesBtn = document.getElementById("yesBtn");
+const noBtn = document.getElementById("noBtn");
+
+// Кнопка "Нет" убегает
+noBtn.addEventListener("mouseenter", () => {
+    const maxX = window.innerWidth - noBtn.offsetWidth;
+    const maxY = window.innerHeight - noBtn.offsetHeight;
+    const randX = Math.random() * maxX;
+    const randY = Math.random() * maxY;
+    noBtn.style.position = "absolute";
+    noBtn.style.left = randX + "px";
+    noBtn.style.top = randY + "px";
+});
+
+// Кнопка "Да" → плавное скрытие текста и кнопок, запуск фото и текста
+yesBtn.addEventListener("click", () => {
+    valentineText.style.transition = "opacity 1s";
+    buttonContainer.style.transition = "opacity 1s";
+    valentineText.style.opacity = 0;
+    buttonContainer.style.opacity = 0;
+
+    setTimeout(() => {
+        valentineText.remove();
+        buttonContainer.remove();
+
+        // Добавляем фото
+        photos.forEach(src => {
+            const img = document.createElement("img");
+            img.src = src;
+            photoContainer.appendChild(img);
+        });
+
+        function randomizePhotos() {
+            const imgs = photoContainer.querySelectorAll("img");
+            imgs.forEach(img => img.style.opacity = 0);
+            const randomIndex = Math.floor(Math.random() * imgs.length);
+            imgs[randomIndex].style.opacity = 1;
+            setTimeout(randomizePhotos, 2000);
+        }
+        randomizePhotos();
+
+        // Падающие сердечки
+        setInterval(() => {
+            const heart = document.createElement("div");
+            heart.className = "heart";
+            heart.style.left = Math.random() * window.innerWidth + "px";
+            heart.style.top = "-50px";
+            heart.style.fontSize = 24 + Math.random()*12 + "px";
+            heart.textContent = "💖";
+            heart.style.animationDuration = (3 + Math.random()*2) + "s";
+            document.body.appendChild(heart);
+            setTimeout(()=>heart.remove(), 5000);
+        }, 400);
+
+        // Печать текста
+        let i = 0;
+        message.textContent = "";
+        const interval = setInterval(()=>{
+            message.textContent += finalText[i];
+            i++;
+            if(i >= finalText.length) clearInterval(interval);
+        }, 50);
+
+    }, 1000);
+});
+
+// Обработчики для бокового меню (если кнопки нажаты на этой странице — перенаправляем на нужные страницы)
+const sidebarValBtn = document.getElementById("valentineBtn");
+const sidebarMomentsBtn = document.getElementById("momentsBtn");
+const sidebarAboutBtn = document.getElementById("aboutBtn");
+
+// Кнопка "Назад" в сайдбаре — плавный переход перед навигацией
+const backBtn = document.getElementById("backBtn");
+if (backBtn) backBtn.addEventListener("click", () => {
+    document.body.classList.add("fade-out");
+    const navigate = () => { window.location.href = "main.html"; };
+    const onTransitionEnd = (e) => {
+        if (e.target === document.body && e.propertyName === 'opacity') {
+            document.body.removeEventListener('transitionend', onTransitionEnd);
+            navigate();
+        }
+    };
+    document.body.addEventListener('transitionend', onTransitionEnd);
+    setTimeout(navigate, 800);
+});
+
+// Плавное появление страницы при загрузке
+document.addEventListener('DOMContentLoaded', () => {
+    const sb = document.getElementById('sidebar');
+    requestAnimationFrame(() => {
+        document.body.classList.add('visible');
+        if (sb) sb.classList.add('visible');
+    });
+});
+</script>
+</body>
+</html>
